@@ -12,10 +12,18 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
 	"github.com/google/tiff"
+)
+
+// Potential errors that indicate incompatibility with Exstream importer
+var (
+	ErrNotTIFFFile        = errors.New("The file does not appear to be a TIFF file")
+	ErrTIFFLayers         = errors.New("The file contains layers")
+	ErrCompressedTIFFFile = errors.New("The file appears to be compressed")
 )
 
 func main() {
@@ -34,36 +42,53 @@ func main() {
 		}
 
 		sym := "✔ "
+		errMsg := ""
 
-		if !IsFlattenedTIFF(file) {
+		if ok, errs := IsExstreamCompatible(file); !ok {
 			sym = "✘ "
+			for _, msg := range errs {
+				errMsg += msg.Error() + "\n"
+			}
 		}
 
 		fmt.Printf("%s %s\n", sym, fileName)
+		if errMsg != "" {
+			fmt.Printf("Error:\n%s", errMsg)
+		}
 	}
 
 }
 
-// IsFlattenedTIFF Returns whether a given file is a flattened TIFF.
+// IsExstreamCompatible Returns whether a given file is a flattened TIFF.
 // Returns true if the file is a valid TIFF file and has a single flattened image layer.
 // Returns false if the file is an invalid TIFF file or has multiple image layers.
-func IsFlattenedTIFF(file *os.File) bool {
-
+func IsExstreamCompatible(file *os.File) (bool, []error) {
+	errs := []error{}
 	t, err := tiff.Parse(tiff.NewReadAtReadSeeker(file), nil, nil)
 	if err != nil {
-		// Not a valid TIFF file
-		return false
+		errs := append(errs, ErrNotTIFFFile)
+		return false, errs
 	}
 
 	for _, ifd := range t.IFDs() {
 		for _, field := range ifd.Fields() {
-			// Not flattened
+			// fmt.Println(field.Tag().ID(), ":", field.Tag().Name())
+
+			// Not flattened (has layers)
 			if field.Tag().ID() == 37724 && field.Tag().Name() == "ImageSourceData" {
-				return false
+				errs = append(errs, ErrTIFFLayers)
 			}
 
+			// Compressed
+			if field.Tag().ID() == 317 && field.Tag().Name() == "Predictor" {
+				errs = append(errs, ErrCompressedTIFFFile)
+			}
+
+			if len(errs) > 0 {
+				return false, errs
+			}
 		}
 	}
 
-	return true
+	return true, nil
 }
