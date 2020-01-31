@@ -3,11 +3,12 @@
 // license that can be found in the LICENSE file.
 //
 // Simple command-line tool to determine if a given file is
-// a valid TIFF file with a single flattened image layer.
+// a valid TIFF file that is compatible with Exstream importer.
 //
 // See also:
 // https://printplanet.com/forum/prepress-and-workflow/adobe/248476-identifying-layered-tifs-in-indesign?p=248649#post248649
 // https://www.awaresystems.be/imaging/tiff/tifftags/imagesourcedata.html
+// https://www.awaresystems.be/imaging/tiff/tifftags/predictor.html
 
 package main
 
@@ -77,11 +78,13 @@ func IsExstreamCompatible(file *os.File) (bool, []error) {
 			// fmt.Println(field.Tag().ID(), ":", field.Tag().Name())
 
 			// Not flattened (has layers)
+			// https://www.awaresystems.be/imaging/tiff/tifftags/imagesourcedata.html
 			if field.Tag().ID() == 37724 && field.Tag().Name() == "ImageSourceData" {
 				errs = append(errs, ErrTIFFLayers)
 			}
 
 			// Compressed
+			// https://www.awaresystems.be/imaging/tiff/tifftags/predictor.html
 			if field.Tag().ID() == 317 && field.Tag().Name() == "Predictor" {
 				errs = append(errs, ErrCompressedTIFFFile)
 			}
