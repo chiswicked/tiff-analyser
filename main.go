@@ -59,9 +59,11 @@ func main() {
 
 }
 
-// IsExstreamCompatible Returns whether a given file is a flattened TIFF.
-// Returns true if the file is a valid TIFF file and has a single flattened image layer.
-// Returns false if the file is an invalid TIFF file or has multiple image layers.
+// IsExstreamCompatible Returns whether a given file is an
+// Exstream importer compatible TIFF.
+// Returns true if the file is a compatible TIFF file.
+// Returns false if the file is an incompatible TIFF file
+// with the errors found listed in []errors.
 func IsExstreamCompatible(file *os.File) (bool, []error) {
 	errs := []error{}
 	t, err := tiff.Parse(tiff.NewReadAtReadSeeker(file), nil, nil)
